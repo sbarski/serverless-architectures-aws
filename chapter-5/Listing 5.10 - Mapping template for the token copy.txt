@@ -1,3 +1,4 @@
 {
-    "authToken" : "$input.params('Authorization')" 
+    "authToken" : "$input.params('Authorization')",
+    "accessToken": "$input.params('AccessToken')"
 }
