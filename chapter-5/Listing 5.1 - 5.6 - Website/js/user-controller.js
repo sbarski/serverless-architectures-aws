@@ -30,11 +30,33 @@ var userController = {
     this.data.config = config;
     this.data.auth0Lock = new Auth0Lock(config.auth0.clientId, config.auth0.domain);
 
-    var idToken = localStorage.getItem('userToken');
+    this.data.auth0Lock.on("authenticated", function(authResult) {
+      
+      console.log("authResult: " + JSON.stringify(authResult));
 
-    if (idToken) {
+      // Call getUserInfo using the token from authResult
+  
+       this.getUserInfo(authResult.accessToken, function(error, profile) {
+        if (error) {
+          // Error callback
+          alert('There was an error getting user info');
+        } else {
+          // Save the JWT token.
+          console.log('saving user token');
+
+          localStorage.setItem('accessToken', authResult.accessToken);
+          localStorage.setItem('idToken', authResult.idToken);
+          that.configureAuthenticatedRequests();
+          that.showUserAuthenticationDetails(profile);
+        }
+      });
+    });
+
+    var accessToken = localStorage.getItem('accessToken');
+
+    if (accessToken) {
       this.configureAuthenticatedRequests();
-      this.data.auth0Lock.getProfile(idToken, function(err, profile) {
+      this.data.auth0Lock.getUserInfo(accessToken, function(err, profile) {
         if (err) {
           return alert('There was an error getting the profile: ' + err.message);
         }
@@ -47,7 +69,8 @@ var userController = {
   configureAuthenticatedRequests: function() {
     $.ajaxSetup({
       'beforeSend': function(xhr) {
-        xhr.setRequestHeader('Authorization', 'Bearer ' + localStorage.getItem('userToken'));
+        xhr.setRequestHeader('Authorization', 'Bearer ' + localStorage.getItem('idToken'));
+        xhr.setRequestHeader('AccessToken', localStorage.getItem('accessToken'));
       }
     });
   },
@@ -73,21 +96,11 @@ var userController = {
         }
       };
 
-      that.data.auth0Lock.show(params, function(err, profile, token) {
-        if (err) {
-          // Error callback
-          alert('There was an error');
-        } else {
-          // Save the JWT token.
-          localStorage.setItem('userToken', token);
-          that.configureAuthenticatedRequests();
-          that.showUserAuthenticationDetails(profile);
-        }
-      });
+      that.data.auth0Lock.show(params);
     });
 
     this.uiElements.logoutButton.click(function(e) {
-      localStorage.removeItem('userToken');
+      localStorage.removeItem('accessToken');
 
       that.uiElements.logoutButton.hide();
       that.uiElements.profileButton.hide();
@@ -98,6 +111,9 @@ var userController = {
       var url = that.data.config.apiBaseUrl + '/user-profile';
 
       $.get(url, function(data, status) {
+
+        alert(JSON.stringify(data));
+
         $('#user-profile-raw-json').text(JSON.stringify(data, null, 2));
         $('#user-profile-modal').modal();
       })
